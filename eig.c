@@ -22,7 +22,10 @@ int *INFO;
 int *SWEEPS;
 double *NORM;
 double *TOL;
-int n=12800;//12800;
+
+int n= (1<<12);//12800;
+printf("n=%d\n",n);
+
 double *a;
 double *d;
 double *e;
@@ -41,9 +44,11 @@ hipMalloc((void **)&SWEEPS,sizeof(int));
 hipMalloc((void **)&TOL,sizeof(double));
 hipMalloc((void **)&NORM,sizeof(double));
 
+float MAX=RAND_MAX;
 for(int i=0;i<n*n;i++)
 {
-    a[i]=1.0;
+    //a[i]=1.0;
+    a[i] = rand()/MAX;
 }
 for(int i=0;i<n;i++)
 {
