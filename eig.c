@@ -4,8 +4,20 @@
 #include<stdio.h>
 #include<time.h>
 
-int main()
+int main(int argc, const char **argv)
 {
+
+    int n=0;
+    if(argc==1)
+    {
+        printf("no matrix size specified\n");
+        exit(0);
+    }
+    else
+    {
+        n=atoi(argv[1]);
+        printf("requested matrix size %d\n",n);
+    }
 
 rocblas_handle handle;
 rocblas_create_handle(&handle);
@@ -23,7 +35,8 @@ int *SWEEPS;
 double *NORM;
 double *TOL;
 
-int n= (1<<12);//12800;
+//int n= (1<<12);//12800;
+//printf("n=%d\n",n);
 printf("n=%d\n",n);
 
 double *a;
@@ -44,7 +57,7 @@ hipMalloc((void **)&SWEEPS,sizeof(int));
 hipMalloc((void **)&TOL,sizeof(double));
 hipMalloc((void **)&NORM,sizeof(double));
 
-float MAX=RAND_MAX;
+double MAX=RAND_MAX-1.0;
 for(int i=0;i<n*n;i++)
 {
     //a[i]=1.0;
