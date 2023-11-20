@@ -1,5 +1,6 @@
 #include "hip/hip_runtime_api.h"
 #include "rocsolver/rocsolver.h"
+#include "hipsolver/hipsolver.h"
 #include<stdlib.h>
 #include<stdio.h>
 #include<time.h>
@@ -37,6 +38,7 @@ int main(int argc, const char **argv)
     double tol=-1.0;
     int info=-1;
     int *INFO;
+    int WORK;
     int *SWEEPS;
     double *NORM;
     double *TOL;
@@ -47,9 +49,23 @@ int main(int argc, const char **argv)
     double *A;
     double *D;
     double *E;
+    double *W;
     a=malloc(n*n*sizeof(double));
     d=malloc(n*sizeof(double));
     e=malloc(n*sizeof(double));
+
+    //Calculate size of work buffer and allocate it
+    hipsolverDsyevd_bufferSize(
+        handle,                      // rocblas handle                                -> rocblasHandle_t
+        HIPSOLVER_EIG_MODE_VECTOR,   // whether or not to  compute eigenvectors       -> hipsolverEigMode_t
+        HIPSOLVER_FILL_MODE_UPPER,   // whether upper or lower part of matrix is used -> hipsolverFillMode_t
+        n,                           // matrix size                                   -> int
+        NULL,                        // real symmetric input matrix (not required)    -> pointer to double
+        n,                           // leading dimension of the matrix A             -> int
+        NULL,                        // eigenvalues of the matrix A (not required)    -> pointer to double
+        &WORK                        // size of work buffer  (output)                 -> pointer to int
+    );
+    hipMalloc((void **)&W,WORK);
 
     hipMalloc((void **)&A,n*n*sizeof(double));
     hipMalloc((void **)&D,n*sizeof(double));
@@ -83,34 +99,32 @@ int main(int argc, const char **argv)
     clock_gettime(CLOCK_MONOTONIC,&copy2D);
     printf("copy2D %8.4e\n",clock_delta(&copy2D, &memalloc));
 
+    hipsolverDsyevd(
+        handle,                      // rocblas handle                                -> rocblasHandle_t
+        HIPSOLVER_EIG_MODE_VECTOR,   // whether or not to  compute eigenvectors       -> hipsolverEigMode_t
+        HIPSOLVER_FILL_MODE_UPPER,   // whether upper or lower part of matrix is used -> hipsolverFillMode_t
+        n,                           // matrix size                                   -> int
+        A,                           // real symmetric input matrix                   -> pointer to double
+        n,                           // leading dimension of the matrix A             -> int
+        D,                           // eigenvalues of the matrix A                   -> pointer to double
+        W,                           // workspace array                               -> pointer to double
+        WORK,                        // size of work buffer                           -> pointer to int
+        INFO                         // error code
+    );
+
+/*
     rocsolver_dsyevd(
-        handle,                          // rocblas handle
-        rocblas_evect_original,          // whether or not to compute eigenvectors -> rocblas_evect_original
-        rocblas_fill_upper,              // whether or upper or lower part of matrix is used -> rocblas_fill
-        n,                               // matrix size ,i.e numer of rows/columns of matrix A -> rocblas_int
-        A,                               // real symmetric input matrix -> converted to eignevector matrix at exit
-        n,                               // leading dimension of matrix A -> rocblas_int
-        D,                               // eigenvalues of the matrix A -> pointer to double
-        E,                               // workspace array of dimension n -> pointer to double
-        INFO                             // error code 0=success -> pointer to rocblas_int
+        handle,                      // rocblas handle
+        rocblas_evect_original,      // whether or not to compute eigenvectors -> rocblas_evect_original
+        rocblas_fill_upper,          // whether or upper or lower part of matrix is used -> rocblas_fill
+        n,                           // matrix size ,i.e numer of rows/columns of matrix A -> rocblas_int
+        A,                           // real symmetric input matrix -> converted to eignevector matrix at exit
+        n,                           // leading dimension of matrix A -> rocblas_int
+        D,                           // eigenvalues of the matrix A -> pointer to double
+        E,                           // workspace array of dimension n -> pointer to double
+        INFO                         // error code 0=success -> pointer to rocblas_int
     );
-    /*
-    rocsolver_dsyevj(
-        handle,                          //rocblas handle
-        rocblas_esort_none,              //rocblas_esort_ascending || rocblas_sort_none
-        rocblas_evect_original,          //rocblas_evect_original
-        rocblas_fill_upper,              //rocblas_fill_upper
-        n,                               //matrix dimension
-        A,                               //matrix
-        n,                               //leading matrix dimension == n
-        tol,                             //convergence tolerance -1 implies machine epsilon
-        NORM,                            //error norm -> pointer to double
-        1024,                            //max_sweeps -> maximum number of sweeps
-        SWEEPS,                          //sweeps -> pointer to int
-        D,                               //eigenvalues -> pointer to double of dimension n
-        INFO                             //exit status -> 0 indicates success
-    );
-    */
+*/
 
     struct timespec dsyevd;
     clock_gettime(CLOCK_MONOTONIC,&dsyevd);
@@ -131,6 +145,7 @@ int main(int argc, const char **argv)
     hipFree(A);
     hipFree(D);
     hipFree(E);
+    hipFree(W);
 
     rocblas_destroy_handle(handle);
 
