@@ -1,6 +1,10 @@
+/*
 #include "hip/hip_runtime_api.h"
 #include "rocsolver/rocsolver.h"
 #include "hipsolver/hipsolver.h"
+*/
+#include "cusolverDn.h"
+
 #include<stdlib.h>
 #include<stdio.h>
 #include<time.h>
@@ -24,10 +28,20 @@ int main(int argc, const char **argv)
         n=atoi(argv[1]);
         printf("requested matrix size %d\n\n",n);
     }
-
+/*
     rocblas_handle handle;
     rocblas_create_handle(&handle);
     rocblas_initialize();
+*/
+/*
+    cublasHandle_t handle;
+    cublasCreate_v2(&handle);
+//    cublas_initialize();
+*/
+    cusolverDnHandle_t handle;
+    cusolverDnCreate(&handle);
+
+
 
     struct timespec init;
     clock_gettime(CLOCK_MONOTONIC,&init);
@@ -55,6 +69,7 @@ int main(int argc, const char **argv)
     e=malloc(n*sizeof(double));
 
     //Calculate size of work buffer and allocate it
+/*
     hipsolverDsyevd_bufferSize(
         handle,                      // rocblas handle                                -> rocblasHandle_t
         HIPSOLVER_EIG_MODE_VECTOR,   // whether or not to  compute eigenvectors       -> hipsolverEigMode_t
@@ -65,15 +80,26 @@ int main(int argc, const char **argv)
         NULL,                        // eigenvalues of the matrix A (not required)    -> pointer to double
         &WORK                        // size of work buffer  (output)                 -> pointer to int
     );
-    hipMalloc((void **)&W,WORK);
+*/
+    cusolverDnDsyevd_bufferSize(
+        handle,                      // rocblas handle                                -> rocblasHandle_t
+        CUSOLVER_EIG_MODE_VECTOR,   // whether or not to  compute eigenvectors       -> hipsolverEigMode_t
+        CUBLAS_FILL_MODE_UPPER,   // whether upper or lower part of matrix is used -> hipsolverFillMode_t
+        n,                           // matrix size                                   -> int
+        NULL,                        // real symmetric input matrix (not required)    -> pointer to double
+        n,                           // leading dimension of the matrix A             -> int
+        NULL,                        // eigenvalues of the matrix A (not required)    -> pointer to double
+        &WORK                        // size of work buffer  (output)                 -> pointer to int
+    );
+    cudaMalloc((void **)&W,WORK);
 
-    hipMalloc((void **)&A,n*n*sizeof(double));
-    hipMalloc((void **)&D,n*sizeof(double));
-    hipMalloc((void **)&E,n*sizeof(double));
-    hipMalloc((void **)&INFO,sizeof(int));
-    hipMalloc((void **)&SWEEPS,sizeof(int));
-    hipMalloc((void **)&TOL,sizeof(double));
-    hipMalloc((void **)&NORM,sizeof(double));
+    cudaMalloc((void **)&A,n*n*sizeof(double));
+    cudaMalloc((void **)&D,n*sizeof(double));
+    cudaMalloc((void **)&E,n*sizeof(double));
+    cudaMalloc((void **)&INFO,sizeof(int));
+    cudaMalloc((void **)&SWEEPS,sizeof(int));
+    cudaMalloc((void **)&TOL,sizeof(double));
+    cudaMalloc((void **)&NORM,sizeof(double));
 
     double MAX=RAND_MAX-1.0;
     for(int i=0;i<n*n;i++)
@@ -91,14 +117,14 @@ int main(int argc, const char **argv)
     clock_gettime(CLOCK_MONOTONIC,&memalloc);
     printf("malloc %8.4e\n",clock_delta(&memalloc,&init));
 
-    hipMemcpy((void*)A,(void*)a,nbytes, hipMemcpyHostToDevice);
-    hipMemcpy((void*)D,(void*)d,n*sizeof(double), hipMemcpyHostToDevice);
-    hipMemcpy((void*)TOL,(void*)&tol,sizeof(double), hipMemcpyHostToDevice);
+    cudaMemcpy((void*)A,(void*)a,nbytes, cudaMemcpyHostToDevice);
+    cudaMemcpy((void*)D,(void*)d,n*sizeof(double), cudaMemcpyHostToDevice);
+    cudaMemcpy((void*)TOL,(void*)&tol,sizeof(double), cudaMemcpyHostToDevice);
 
     struct timespec copy2D;
     clock_gettime(CLOCK_MONOTONIC,&copy2D);
     printf("copy2D %8.4e\n",clock_delta(&copy2D, &memalloc));
-
+/*
     hipsolverDsyevd(
         handle,                      // rocblas handle                                -> rocblasHandle_t
         HIPSOLVER_EIG_MODE_VECTOR,   // whether or not to  compute eigenvectors       -> hipsolverEigMode_t
@@ -111,7 +137,28 @@ int main(int argc, const char **argv)
         WORK,                        // size of work buffer                           -> pointer to int
         INFO                         // error code
     );
-
+*/
+    int status;
+    status=cusolverDnDsyevd(
+        handle,                      // rocblas handle                                -> rocblasHandle_t
+        CUSOLVER_EIG_MODE_VECTOR,   // whether or not to  compute eigenvectors       -> hipsolverEigMode_t
+        CUBLAS_FILL_MODE_UPPER,   // whether upper or lower part of matrix is used -> hipsolverFillMode_t
+        n,                           // matrix size                                   -> int
+        A,                           // real symmetric input matrix                   -> pointer to double
+        n,                           // leading dimension of the matrix A             -> int
+        D,                           // eigenvalues of the matrix A                   -> pointer to double
+        W,                           // workspace array                               -> pointer to double
+        WORK,                        // size of work buffer                           -> pointer to int
+        INFO                         // error code
+    );
+    cudaDeviceSynchronize();
+    printf("status:%d\n",status);
+    printf("status:%s\n",cudaGetErrorName(status));
+    printf("CUSOLVER_STATUS_SUCCESS:%d\n",CUSOLVER_STATUS_SUCCESS);
+    printf("CUSOLVER_STATUS_NOT_INITIALIZED:%d\n",CUSOLVER_STATUS_NOT_INITIALIZED);
+    printf("CUSOLVER_STATUS_EXECUTION_FAILED:%d\n",CUSOLVER_STATUS_EXECUTION_FAILED);
+    printf("CUSOLVER_STATUS_INTERNAL_ERROR:%d\n",CUSOLVER_STATUS_INTERNAL_ERROR);
+    getchar();
 /*
     rocsolver_dsyevd(
         handle,                      // rocblas handle
@@ -130,10 +177,10 @@ int main(int argc, const char **argv)
     clock_gettime(CLOCK_MONOTONIC,&dsyevd);
     printf("dsyevd %8.4e\n",clock_delta(&dsyevd, &copy2D));
 
-    hipMemcpy((void*)d,(void*)D,n*sizeof(double), hipMemcpyDeviceToHost);
-    hipMemcpy((void*)&info,(void*)INFO,sizeof(int), hipMemcpyDeviceToHost);
-    hipMemcpy((void*)&sweeps,(void*)SWEEPS,sizeof(int), hipMemcpyDeviceToHost);
-    hipMemcpy((void*)&norm,(void*)NORM,sizeof(double), hipMemcpyDeviceToHost);
+    cudaMemcpy((void*)d,(void*)D,n*sizeof(double), cudaMemcpyDeviceToHost);
+    cudaMemcpy((void*)&info,(void*)INFO,sizeof(int), cudaMemcpyDeviceToHost);
+    cudaMemcpy((void*)&sweeps,(void*)SWEEPS,sizeof(int), cudaMemcpyDeviceToHost);
+    cudaMemcpy((void*)&norm,(void*)NORM,sizeof(double), cudaMemcpyDeviceToHost);
 
     struct timespec copy2H;
     clock_gettime(CLOCK_MONOTONIC,&copy2H);
@@ -142,12 +189,13 @@ int main(int argc, const char **argv)
     free(a);
     free(d);
     free(e);
-    hipFree(A);
-    hipFree(D);
-    hipFree(E);
-    hipFree(W);
+    cudaFree(A);
+    cudaFree(D);
+    cudaFree(E);
+    cudaFree(W);
 
-    rocblas_destroy_handle(handle);
+//   rocblas_destroy_handle(handle);
+    cusolverDnDestroy(handle);
 
     struct timespec memfree;
     clock_gettime(CLOCK_MONOTONIC,&memfree);
