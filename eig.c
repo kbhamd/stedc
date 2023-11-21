@@ -33,15 +33,8 @@ int main(int argc, const char **argv)
     rocblas_create_handle(&handle);
     rocblas_initialize();
 */
-/*
-    cublasHandle_t handle;
-    cublasCreate_v2(&handle);
-//    cublas_initialize();
-*/
     cusolverDnHandle_t handle;
     cusolverDnCreate(&handle);
-
-
 
     struct timespec init;
     clock_gettime(CLOCK_MONOTONIC,&init);
@@ -83,15 +76,15 @@ int main(int argc, const char **argv)
 */
     cusolverDnDsyevd_bufferSize(
         handle,                      // rocblas handle                                -> rocblasHandle_t
-        CUSOLVER_EIG_MODE_VECTOR,   // whether or not to  compute eigenvectors       -> hipsolverEigMode_t
-        CUBLAS_FILL_MODE_UPPER,   // whether upper or lower part of matrix is used -> hipsolverFillMode_t
+        CUSOLVER_EIG_MODE_VECTOR,    // whether or not to  compute eigenvectors       -> hipsolverEigMode_t
+        CUBLAS_FILL_MODE_UPPER,      // whether upper or lower part of matrix is used -> hipsolverFillMode_t
         n,                           // matrix size                                   -> int
         NULL,                        // real symmetric input matrix (not required)    -> pointer to double
         n,                           // leading dimension of the matrix A             -> int
         NULL,                        // eigenvalues of the matrix A (not required)    -> pointer to double
         &WORK                        // size of work buffer  (output)                 -> pointer to int
     );
-    cudaMalloc((void **)&W,WORK);
+    cudaMalloc((void **)&W,WORK*sizeof(double));
 
     cudaMalloc((void **)&A,n*n*sizeof(double));
     cudaMalloc((void **)&D,n*sizeof(double));
@@ -141,8 +134,8 @@ int main(int argc, const char **argv)
     int status;
     status=cusolverDnDsyevd(
         handle,                      // rocblas handle                                -> rocblasHandle_t
-        CUSOLVER_EIG_MODE_VECTOR,   // whether or not to  compute eigenvectors       -> hipsolverEigMode_t
-        CUBLAS_FILL_MODE_UPPER,   // whether upper or lower part of matrix is used -> hipsolverFillMode_t
+        CUSOLVER_EIG_MODE_VECTOR,    // whether or not to  compute eigenvectors       -> hipsolverEigMode_t
+        CUBLAS_FILL_MODE_UPPER,      // whether upper or lower part of matrix is used -> hipsolverFillMode_t
         n,                           // matrix size                                   -> int
         A,                           // real symmetric input matrix                   -> pointer to double
         n,                           // leading dimension of the matrix A             -> int
@@ -151,14 +144,8 @@ int main(int argc, const char **argv)
         WORK,                        // size of work buffer                           -> pointer to int
         INFO                         // error code
     );
-    cudaDeviceSynchronize();
-    printf("status:%d\n",status);
-    printf("status:%s\n",cudaGetErrorName(status));
-    printf("CUSOLVER_STATUS_SUCCESS:%d\n",CUSOLVER_STATUS_SUCCESS);
-    printf("CUSOLVER_STATUS_NOT_INITIALIZED:%d\n",CUSOLVER_STATUS_NOT_INITIALIZED);
-    printf("CUSOLVER_STATUS_EXECUTION_FAILED:%d\n",CUSOLVER_STATUS_EXECUTION_FAILED);
-    printf("CUSOLVER_STATUS_INTERNAL_ERROR:%d\n",CUSOLVER_STATUS_INTERNAL_ERROR);
-    getchar();
+//    cudaDeviceSynchronize();
+//    printf("status:%d\n",status);
 /*
     rocsolver_dsyevd(
         handle,                      // rocblas handle
