@@ -1,8 +1,11 @@
 
 
-eig: eig.c
-	hipcc -D__HIP_PLATFORM_AMD__ -lhipsolver -lrocsolver -lrocblas -o eig eig.c
-#	nvcc -lcusolver -o eig eig.c
+hip: eig.c
+	hipcc -D__HIP_PLATFORM_AMD__ -lhipsolver -lrocblas -o eig eig.c
+
+cuda: eig.c
+	nvcc -Dcuda -lcusolver -o eig eig.c
+
 
 sort: sort.cxx
 	hipcc -D__HIP_PLATFORM_AMD__ -o sort sort.cxx

@@ -1,11 +1,11 @@
-/*
-#include "hip/hip_runtime_api.h"
-#include "rocsolver/rocsolver.h"
-#include "hipsolver/hipsolver.h"
-*/
 
-//#define cuda
+#include<stdlib.h>
+#include<stdio.h>
+#include<time.h>
+
+
 #ifdef cuda
+    #include "cusolverDn.h"
     #define hipFree cudaFree
     #define hipMalloc cudaMalloc
     #define hipMemcpy cudaMemcpy
@@ -18,15 +18,10 @@
     #define hipsolverDnDsyevd cusolverDnDsyevd
     #define HIPSOLVER_EIG_MODE_VECTOR CUSOLVER_EIG_MODE_VECTOR
     #define HIPSOLVER_FILL_MODE_UPPER CUBLAS_FILL_MODE_UPPER
-
+#else
+    #include "hipsolver/hipsolver.h"
 #endif
 
-#include "hipsolver/hipsolver.h"
-//#include "cusolverDn.h"
-
-#include<stdlib.h>
-#include<stdio.h>
-#include<time.h>
 
 
 float clock_delta(struct timespec *y, struct timespec *x){return y->tv_sec-x->tv_sec +1e-9*(y->tv_nsec -x->tv_nsec);}
@@ -81,18 +76,6 @@ int main(int argc, const char **argv)
     e=malloc(n*sizeof(double));
 
     //Calculate size of work buffer and allocate it
-/*
-    hipsolverDsyevd_bufferSize(
-        handle,                      // rocblas handle                                -> rocblasHandle_t
-        HIPSOLVER_EIG_MODE_VECTOR,   // whether or not to  compute eigenvectors       -> hipsolverEigMode_t
-        HIPSOLVER_FILL_MODE_UPPER,   // whether upper or lower part of matrix is used -> hipsolverFillMode_t
-        n,                           // matrix size                                   -> int
-        NULL,                        // real symmetric input matrix (not required)    -> pointer to double
-        n,                           // leading dimension of the matrix A             -> int
-        NULL,                        // eigenvalues of the matrix A (not required)    -> pointer to double
-        &WORK                        // size of work buffer  (output)                 -> pointer to int
-    );
-*/
     hipsolverDnDsyevd_bufferSize(
         handle,                      // rocblas handle                                -> rocblasHandle_t
         HIPSOLVER_EIG_MODE_VECTOR,   // whether or not to  compute eigenvectors       -> hipsolverEigMode_t
@@ -116,7 +99,6 @@ int main(int argc, const char **argv)
     double MAX=RAND_MAX-1.0;
     for(int i=0;i<n*n;i++)
     {
-        //a[i]=1.0;
         a[i] = rand()/MAX;
     }
     for(int i=0;i<n;i++)
@@ -136,20 +118,7 @@ int main(int argc, const char **argv)
     struct timespec copy2D;
     clock_gettime(CLOCK_MONOTONIC,&copy2D);
     printf("copy2D %8.4e\n",clock_delta(&copy2D, &memalloc));
-/*
-    hipsolverDsyevd(
-        handle,                      // rocblas handle                                -> rocblasHandle_t
-        HIPSOLVER_EIG_MODE_VECTOR,   // whether or not to  compute eigenvectors       -> hipsolverEigMode_t
-        HIPSOLVER_FILL_MODE_UPPER,   // whether upper or lower part of matrix is used -> hipsolverFillMode_t
-        n,                           // matrix size                                   -> int
-        A,                           // real symmetric input matrix                   -> pointer to double
-        n,                           // leading dimension of the matrix A             -> int
-        D,                           // eigenvalues of the matrix A                   -> pointer to double
-        W,                           // workspace array                               -> pointer to double
-        WORK,                        // size of work buffer                           -> pointer to int
-        INFO                         // error code
-    );
-*/
+
     int status;
     status=hipsolverDnDsyevd(
         handle,                      // rocblas handle                                -> rocblasHandle_t
@@ -163,8 +132,7 @@ int main(int argc, const char **argv)
         WORK,                        // size of work buffer                           -> pointer to int
         INFO                         // error code
     );
-//    cudaDeviceSynchronize();
-//    printf("status:%d\n",status);
+
 /*
     rocsolver_dsyevd(
         handle,                      // rocblas handle
@@ -200,7 +168,6 @@ int main(int argc, const char **argv)
     hipFree(E);
     hipFree(W);
 
-//   rocblas_destroy_handle(handle);
     hipsolverDnDestroy(handle);
 
     struct timespec memfree;
