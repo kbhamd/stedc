@@ -1,17 +1,17 @@
 # A playground for symmetric eigensolvers
 
-
-Currently, the repo contains a single benchmark for the `syevd` eigensolver.
+Currently, the repo contains a single benchmark for the `syevd` eigensolver as provided by hipsolver,
+cusolverDn, or rocsolver. The different implementations are acessible through differetn Makefile targets
 
 ## Prerequisites
 ```
-module load rocm
+module load rocm|cuda
 module load sqlite
 ```
 
 ## Build
 ```
-make
+make hip|cuda|roc
 ```
 
 ## Run
@@ -21,7 +21,7 @@ make
 
 ## Profile
 ```
-make prof N=<matrix size>
+make prof|nvprof N=<matrix size>
 ```
 
 ## Example
@@ -74,4 +74,15 @@ calls  grid       kernel                            sec       RDGBs    WRGBs    
 1      32         iota_n                            5.60e-06     0.08     0.01     0.08     0.01      0.00
 2      512        reset_info                        5.60e-06     0.13     0.00     0.13     0.00      0.00
 1      1          reset_batch_info                  3.20e-06     0.27     0.00     0.27     0.00      0.00
+```
+
+## Profiling
+```
+size  A100     MI210
+ 1024 11.81    2.57
+ 2048 11.90   36.26
+ 4096 12.24  341.06
+ 8192 14.31
+16384 25.34
+
 ```
