@@ -76,7 +76,7 @@ calls  grid       kernel                            sec       RDGBs    WRGBs    
 1      1          reset_batch_info                  3.20e-06     0.27     0.00     0.27     0.00      0.00
 ```
 
-## Profiling
+## Benchmarking
 ```
 size  A100     MI210
  1024 11.81    2.57
