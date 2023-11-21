@@ -4,7 +4,7 @@
 #include<time.h>
 
 
-#ifdef cuda
+#if defined(cuda)
     #include "cusolverDn.h"
     #define hipFree cudaFree
     #define hipMalloc cudaMalloc
@@ -18,6 +18,15 @@
     #define hipsolverDnDsyevd cusolverDnDsyevd
     #define HIPSOLVER_EIG_MODE_VECTOR CUSOLVER_EIG_MODE_VECTOR
     #define HIPSOLVER_FILL_MODE_UPPER CUBLAS_FILL_MODE_UPPER
+#elif defined(roc)
+    #include "hip/hip_runtime.h"
+    #include "rocsolver/rocsolver.h"
+    #define hipsolverDnHandle_t rocblas_handle
+    #define hipsolverDnCreate rocblas_create_handle
+    #define hipsolverDnDestroy rocblas_destroy_handle
+    #define hipsolverDnDsyevd rocsolver_dsyevd
+    #define HIPSOLVER_EIG_MODE_VECTOR rocblas_evect_original
+    #define HIPSOLVER_FILL_MODE_UPPER rocblas_fill_upper
 #else
     #include "hipsolver/hipsolver.h"
 #endif
@@ -42,11 +51,7 @@ int main(int argc, const char **argv)
         n=atoi(argv[1]);
         printf("requested matrix size %d\n\n",n);
     }
-/*
-    rocblas_handle handle;
-    rocblas_create_handle(&handle);
-    rocblas_initialize();
-*/
+
     hipsolverDnHandle_t handle;
     hipsolverDnCreate(&handle);
 
@@ -54,28 +59,20 @@ int main(int argc, const char **argv)
     clock_gettime(CLOCK_MONOTONIC,&init);
     printf("initme %8.4e\n",clock_delta(&init,&zero));
 
-    int sweeps=-1; //sweeps syevj only
-    double norm=-1.0; //error  syevj only
-    double tol=-1.0;
     int info=-1;
     int *INFO;
     int WORK;
-    int *SWEEPS;
-    double *NORM;
-    double *TOL;
 
     double *a;
     double *d;
-    double *e;
     double *A;
     double *D;
-    double *E;
     double *W;
     a=malloc(n*n*sizeof(double));
     d=malloc(n*sizeof(double));
-    e=malloc(n*sizeof(double));
 
     //Calculate size of work buffer and allocate it
+#if !defined(roc)
     hipsolverDnDsyevd_bufferSize(
         handle,                      // rocblas handle                                -> rocblasHandle_t
         HIPSOLVER_EIG_MODE_VECTOR,   // whether or not to  compute eigenvectors       -> hipsolverEigMode_t
@@ -86,15 +83,14 @@ int main(int argc, const char **argv)
         NULL,                        // eigenvalues of the matrix A (not required)    -> pointer to double
         &WORK                        // size of work buffer  (output)                 -> pointer to int
     );
+#else
+    WORK=n;
+#endif
     hipMalloc((void **)&W,WORK*sizeof(double));
 
     hipMalloc((void **)&A,n*n*sizeof(double));
     hipMalloc((void **)&D,n*sizeof(double));
-    hipMalloc((void **)&E,n*sizeof(double));
     hipMalloc((void **)&INFO,sizeof(int));
-    hipMalloc((void **)&SWEEPS,sizeof(int));
-    hipMalloc((void **)&TOL,sizeof(double));
-    hipMalloc((void **)&NORM,sizeof(double));
 
     double MAX=RAND_MAX-1.0;
     for(int i=0;i<n*n;i++)
@@ -113,7 +109,6 @@ int main(int argc, const char **argv)
 
     hipMemcpy((void*)A,(void*)a,nbytes, hipMemcpyHostToDevice);
     hipMemcpy((void*)D,(void*)d,n*sizeof(double), hipMemcpyHostToDevice);
-    hipMemcpy((void*)TOL,(void*)&tol,sizeof(double), hipMemcpyHostToDevice);
 
     struct timespec copy2D;
     clock_gettime(CLOCK_MONOTONIC,&copy2D);
@@ -129,7 +124,9 @@ int main(int argc, const char **argv)
         n,                           // leading dimension of the matrix A             -> int
         D,                           // eigenvalues of the matrix A                   -> pointer to double
         W,                           // workspace array                               -> pointer to double
+#if !defined(roc)
         WORK,                        // size of work buffer                           -> pointer to int
+#endif
         INFO                         // error code
     );
 
@@ -153,8 +150,6 @@ int main(int argc, const char **argv)
 
     hipMemcpy((void*)d,(void*)D,n*sizeof(double), hipMemcpyDeviceToHost);
     hipMemcpy((void*)&info,(void*)INFO,sizeof(int), hipMemcpyDeviceToHost);
-    hipMemcpy((void*)&sweeps,(void*)SWEEPS,sizeof(int), hipMemcpyDeviceToHost);
-    hipMemcpy((void*)&norm,(void*)NORM,sizeof(double), hipMemcpyDeviceToHost);
 
     struct timespec copy2H;
     clock_gettime(CLOCK_MONOTONIC,&copy2H);
@@ -162,10 +157,8 @@ int main(int argc, const char **argv)
 
     free(a);
     free(d);
-    free(e);
     hipFree(A);
     hipFree(D);
-    hipFree(E);
     hipFree(W);
 
     hipsolverDnDestroy(handle);

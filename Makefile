@@ -1,7 +1,10 @@
 
 
 hip: eig.c
-	hipcc -D__HIP_PLATFORM_AMD__ -lhipsolver -lrocblas -o eig eig.c
+	hipcc -D__HIP_PLATFORM_AMD__ -lhipsolver -o eig eig.c
+
+roc: eig.c
+	hipcc -D__HIP_PLATFORM_AMD__ -Droc -lrocsolver -lrocblas -o eig eig.c
 
 cuda: eig.c
 	nvcc -Dcuda -lcusolver -o eig eig.c
