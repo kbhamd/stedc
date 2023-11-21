@@ -155,8 +155,6 @@ int main(int argc, const char **argv)
     clock_gettime(CLOCK_MONOTONIC,&copy2H);
     printf("copy2H %8.4e\n",clock_delta(&copy2H,&dsyevd));
 
-    free(a);
-    free(d);
     hipFree(A);
     hipFree(D);
     hipFree(W);
@@ -177,4 +175,7 @@ int main(int argc, const char **argv)
     printf("%f\n",d[n-1]);
 
     printf("info=%d\n",info);
+
+    free(a);
+    free(d);
 }
