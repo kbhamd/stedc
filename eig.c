@@ -3,6 +3,16 @@
 #include "rocsolver/rocsolver.h"
 #include "hipsolver/hipsolver.h"
 */
+
+#define cuda 1
+#ifdef cuda
+    #define hipFree cudaFree
+    #define hipMalloc cudaMalloc
+    #define hipMemcpy cudaMemcpy
+    #define hipMemcpyHostToDevice cudaMemcpyHostToDevice
+    #define hipMemcpyDeviceToHost cudaMemcpyDeviceToHost
+#endif
+
 #include "cusolverDn.h"
 
 #include<stdlib.h>
@@ -84,15 +94,15 @@ int main(int argc, const char **argv)
         NULL,                        // eigenvalues of the matrix A (not required)    -> pointer to double
         &WORK                        // size of work buffer  (output)                 -> pointer to int
     );
-    cudaMalloc((void **)&W,WORK*sizeof(double));
+    hipMalloc((void **)&W,WORK*sizeof(double));
 
-    cudaMalloc((void **)&A,n*n*sizeof(double));
-    cudaMalloc((void **)&D,n*sizeof(double));
-    cudaMalloc((void **)&E,n*sizeof(double));
-    cudaMalloc((void **)&INFO,sizeof(int));
-    cudaMalloc((void **)&SWEEPS,sizeof(int));
-    cudaMalloc((void **)&TOL,sizeof(double));
-    cudaMalloc((void **)&NORM,sizeof(double));
+    hipMalloc((void **)&A,n*n*sizeof(double));
+    hipMalloc((void **)&D,n*sizeof(double));
+    hipMalloc((void **)&E,n*sizeof(double));
+    hipMalloc((void **)&INFO,sizeof(int));
+    hipMalloc((void **)&SWEEPS,sizeof(int));
+    hipMalloc((void **)&TOL,sizeof(double));
+    hipMalloc((void **)&NORM,sizeof(double));
 
     double MAX=RAND_MAX-1.0;
     for(int i=0;i<n*n;i++)
@@ -110,9 +120,9 @@ int main(int argc, const char **argv)
     clock_gettime(CLOCK_MONOTONIC,&memalloc);
     printf("malloc %8.4e\n",clock_delta(&memalloc,&init));
 
-    cudaMemcpy((void*)A,(void*)a,nbytes, cudaMemcpyHostToDevice);
-    cudaMemcpy((void*)D,(void*)d,n*sizeof(double), cudaMemcpyHostToDevice);
-    cudaMemcpy((void*)TOL,(void*)&tol,sizeof(double), cudaMemcpyHostToDevice);
+    hipMemcpy((void*)A,(void*)a,nbytes, hipMemcpyHostToDevice);
+    hipMemcpy((void*)D,(void*)d,n*sizeof(double), hipMemcpyHostToDevice);
+    hipMemcpy((void*)TOL,(void*)&tol,sizeof(double), hipMemcpyHostToDevice);
 
     struct timespec copy2D;
     clock_gettime(CLOCK_MONOTONIC,&copy2D);
@@ -164,10 +174,10 @@ int main(int argc, const char **argv)
     clock_gettime(CLOCK_MONOTONIC,&dsyevd);
     printf("dsyevd %8.4e\n",clock_delta(&dsyevd, &copy2D));
 
-    cudaMemcpy((void*)d,(void*)D,n*sizeof(double), cudaMemcpyDeviceToHost);
-    cudaMemcpy((void*)&info,(void*)INFO,sizeof(int), cudaMemcpyDeviceToHost);
-    cudaMemcpy((void*)&sweeps,(void*)SWEEPS,sizeof(int), cudaMemcpyDeviceToHost);
-    cudaMemcpy((void*)&norm,(void*)NORM,sizeof(double), cudaMemcpyDeviceToHost);
+    hipMemcpy((void*)d,(void*)D,n*sizeof(double), hipMemcpyDeviceToHost);
+    hipMemcpy((void*)&info,(void*)INFO,sizeof(int), hipMemcpyDeviceToHost);
+    hipMemcpy((void*)&sweeps,(void*)SWEEPS,sizeof(int), hipMemcpyDeviceToHost);
+    hipMemcpy((void*)&norm,(void*)NORM,sizeof(double), hipMemcpyDeviceToHost);
 
     struct timespec copy2H;
     clock_gettime(CLOCK_MONOTONIC,&copy2H);
@@ -176,10 +186,10 @@ int main(int argc, const char **argv)
     free(a);
     free(d);
     free(e);
-    cudaFree(A);
-    cudaFree(D);
-    cudaFree(E);
-    cudaFree(W);
+    hipFree(A);
+    hipFree(D);
+    hipFree(E);
+    hipFree(W);
 
 //   rocblas_destroy_handle(handle);
     cusolverDnDestroy(handle);
