@@ -4,16 +4,25 @@
 #include "hipsolver/hipsolver.h"
 */
 
-#define cuda 1
+//#define cuda
 #ifdef cuda
     #define hipFree cudaFree
     #define hipMalloc cudaMalloc
     #define hipMemcpy cudaMemcpy
     #define hipMemcpyHostToDevice cudaMemcpyHostToDevice
     #define hipMemcpyDeviceToHost cudaMemcpyDeviceToHost
+    #define hipsolverDnHandle_t cusolverDnHandle_t
+    #define hipsolverDnCreate cusolverDnCreate
+    #define hipsolverDnDestroy cusolverDnDestroy
+    #define hipsolverDnDsyevd_bufferSize cusolverDnDsyevd_bufferSize
+    #define hipsolverDnDsyevd cusolverDnDsyevd
+    #define HIPSOLVER_EIG_MODE_VECTOR CUSOLVER_EIG_MODE_VECTOR
+    #define HIPSOLVER_FILL_MODE_UPPER CUBLAS_FILL_MODE_UPPER
+
 #endif
 
-#include "cusolverDn.h"
+#include "hipsolver/hipsolver.h"
+//#include "cusolverDn.h"
 
 #include<stdlib.h>
 #include<stdio.h>
@@ -43,8 +52,8 @@ int main(int argc, const char **argv)
     rocblas_create_handle(&handle);
     rocblas_initialize();
 */
-    cusolverDnHandle_t handle;
-    cusolverDnCreate(&handle);
+    hipsolverDnHandle_t handle;
+    hipsolverDnCreate(&handle);
 
     struct timespec init;
     clock_gettime(CLOCK_MONOTONIC,&init);
@@ -84,10 +93,10 @@ int main(int argc, const char **argv)
         &WORK                        // size of work buffer  (output)                 -> pointer to int
     );
 */
-    cusolverDnDsyevd_bufferSize(
+    hipsolverDnDsyevd_bufferSize(
         handle,                      // rocblas handle                                -> rocblasHandle_t
-        CUSOLVER_EIG_MODE_VECTOR,    // whether or not to  compute eigenvectors       -> hipsolverEigMode_t
-        CUBLAS_FILL_MODE_UPPER,      // whether upper or lower part of matrix is used -> hipsolverFillMode_t
+        HIPSOLVER_EIG_MODE_VECTOR,   // whether or not to  compute eigenvectors       -> hipsolverEigMode_t
+        HIPSOLVER_FILL_MODE_UPPER,   // whether upper or lower part of matrix is used -> hipsolverFillMode_t
         n,                           // matrix size                                   -> int
         NULL,                        // real symmetric input matrix (not required)    -> pointer to double
         n,                           // leading dimension of the matrix A             -> int
@@ -142,10 +151,10 @@ int main(int argc, const char **argv)
     );
 */
     int status;
-    status=cusolverDnDsyevd(
+    status=hipsolverDnDsyevd(
         handle,                      // rocblas handle                                -> rocblasHandle_t
-        CUSOLVER_EIG_MODE_VECTOR,    // whether or not to  compute eigenvectors       -> hipsolverEigMode_t
-        CUBLAS_FILL_MODE_UPPER,      // whether upper or lower part of matrix is used -> hipsolverFillMode_t
+        HIPSOLVER_EIG_MODE_VECTOR,   // whether or not to  compute eigenvectors       -> hipsolverEigMode_t
+        HIPSOLVER_FILL_MODE_UPPER,   // whether upper or lower part of matrix is used -> hipsolverFillMode_t
         n,                           // matrix size                                   -> int
         A,                           // real symmetric input matrix                   -> pointer to double
         n,                           // leading dimension of the matrix A             -> int
@@ -192,7 +201,7 @@ int main(int argc, const char **argv)
     hipFree(W);
 
 //   rocblas_destroy_handle(handle);
-    cusolverDnDestroy(handle);
+    hipsolverDnDestroy(handle);
 
     struct timespec memfree;
     clock_gettime(CLOCK_MONOTONIC,&memfree);
