@@ -77,14 +77,17 @@ calls  grid       kernel                            sec       RDGBs    WRGBs    
 ```
 
 ## Benchmarking
-The following results are obtained with the cuda version on A100 and the rocsolver version on MI210
+The following results are obtained with rocsolver from rocm-6.1 and rocm-6.2 on an MI210.
+
 ```
----------------------
- size A100   MI210
----------------------
- 1024 11.81     3.92
- 2048 11.90    33.11
- 4096 12.24   368.74
- 8192 14.31  3070.6
-16384 25.34 21343.
+------------------------
+ size rocm-6.1  rocm-6.2
+------------------------
+ 1024     2.06   0.77
+ 2048    27.82   1.62
+ 4096   266.00   9.40
+ 8192  2508.0   78.53
+16384    -     839.04 
 ```
+
+
