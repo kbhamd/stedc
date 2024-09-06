@@ -1,0 +1,12 @@
+diff --git a/gpaw/gpu/__init__.py b/gpaw/gpu/__init__.py
+index 5498403d6..20340e62c 100644
+--- a/gpaw/gpu/__init__.py
++++ b/gpaw/gpu/__init__.py
+@@ -91,6 +91,7 @@ def cupy_eigh(a: cupy.ndarray, UPLO: str) -> tuple[cupy.ndarray, cupy.ndarray]:
+ 
+     HIP-GPU version is too slow for now so we do it on the CPU.
+     """
++    return cupy.linalg.eigh(a, UPLO=UPLO)
+     from scipy.linalg import eigh
+     if not is_hip:
+         return cupy.linalg.eigh(a, UPLO=UPLO)

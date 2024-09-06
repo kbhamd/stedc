@@ -1,0 +1,107 @@
+diff --git a/cupy_backends/cuda/api/_runtime_typedef.pxi b/cupy_backends/cuda/api/_runtime_typedef.pxi
+index 6f01ea12e..e941c6389 100644
+--- a/cupy_backends/cuda/api/_runtime_typedef.pxi
++++ b/cupy_backends/cuda/api/_runtime_typedef.pxi
+@@ -132,13 +132,13 @@ cdef extern from *:
+         ctypedef struct _MemPoolProps 'cudaMemPoolProps':
+             pass  # for HIP & RTD
+ 
+-    IF CUPY_CUDA_VERSION > 0:
++    IF CUPY_CUDA_VERSION > 0 or CUPY_HIP_VERSION > 60000000:
+         ctypedef struct _PointerAttributes 'cudaPointerAttributes':
+             int type
+             int device
+             void* devicePointer
+             void* hostPointer
+-    ELIF CUPY_HIP_VERSION > 0:
++    ELIF 0 < CUPY_HIP_VERSION < 60000000:
+         ctypedef struct _PointerAttributes 'cudaPointerAttributes':
+             int memoryType
+             int device
+diff --git a/cupy_backends/cuda/api/runtime.pyx b/cupy_backends/cuda/api/runtime.pyx
+index 2eff20048..5047212b1 100644
+--- a/cupy_backends/cuda/api/runtime.pyx
++++ b/cupy_backends/cuda/api/runtime.pyx
+@@ -318,7 +318,6 @@ cpdef getDeviceProperties(int device):
+         properties['clockInstructionRate'] = props.clockInstructionRate
+         properties['maxSharedMemoryPerMultiProcessor'] = (
+             props.maxSharedMemoryPerMultiProcessor)
+-        properties['gcnArch'] = props.gcnArch
+         properties['hdpMemFlushCntl'] = <intptr_t>(props.hdpMemFlushCntl)
+         properties['hdpRegFlushCntl'] = <intptr_t>(props.hdpRegFlushCntl)
+         properties['memPitch'] = props.memPitch
+@@ -351,6 +350,8 @@ cpdef getDeviceProperties(int device):
+         arch['has3dGrid'] = props.arch.has3dGrid
+         arch['hasDynamicParallelism'] = props.arch.hasDynamicParallelism
+         properties['arch'] = arch
++    IF 0 < CUPY_HIP_VERSION < 310:
++        properties['gcnArch'] = props.gcnArch
+     IF CUPY_HIP_VERSION >= 310:
+         properties['gcnArchName'] = props.gcnArchName
+         properties['asicRevision'] = props.asicRevision
+@@ -714,13 +715,13 @@ cpdef PointerAttributes pointerGetAttributes(intptr_t ptr):
+     cdef _PointerAttributes attrs
+     status = cudaPointerGetAttributes(&attrs, <void*>ptr)
+     check_status(status)
+-    IF CUPY_CUDA_VERSION > 0:
++    IF CUPY_CUDA_VERSION > 0 or CUPY_HIP_VERSION > 60000000:
+         return PointerAttributes(
+             attrs.device,
+             <intptr_t>attrs.devicePointer,
+             <intptr_t>attrs.hostPointer,
+             attrs.type)
+-    ELIF CUPY_HIP_VERSION > 0:
++    ELIF 0 < CUPY_HIP_VERSION < 60000000:
+         return PointerAttributes(
+             attrs.device,
+             <intptr_t>attrs.devicePointer,
+diff --git a/cupy_backends/cuda/libs/_cnvrtc.pxi b/cupy_backends/cuda/libs/_cnvrtc.pxi
+index 9f02b5522..af18f13b6 100644
+--- a/cupy_backends/cuda/libs/_cnvrtc.pxi
++++ b/cupy_backends/cuda/libs/_cnvrtc.pxi
+@@ -133,11 +133,6 @@ cdef SoftLink _get_softlink():
+     elif CUPY_HIP_VERSION != 0:
+         runtime_version = runtime.runtimeGetVersion()
+         prefix = 'hiprtc'
+-        if runtime_version < 5_00_00000:
+-            # ROCm 4.x
+-            libname = 'libamdhip64.so.4'
+-        elif runtime_version < 6_00_00000:
+-            # ROCm 5.x
+-            libname = 'libamdhip64.so.5'
++        libname = 'libamdhip64.so'
+ 
+     return SoftLink(libname, prefix, mandatory=True)
+diff --git a/cupy_backends/hip/cupy_hip_runtime.h b/cupy_backends/hip/cupy_hip_runtime.h
+index 51a54323e..0fca7d5e5 100644
+--- a/cupy_backends/hip/cupy_hip_runtime.h
++++ b/cupy_backends/hip/cupy_hip_runtime.h
+@@ -269,6 +269,20 @@ cudaError_t cudaMemPrefetchAsync(const void *devPtr, size_t count,
+ cudaError_t cudaPointerGetAttributes(cudaPointerAttributes *attributes,
+                                      const void* ptr) {
+     cudaError_t status = hipPointerGetAttributes(attributes, ptr);
++#if HIP_VERSION >= 60000000
++    if (status == cudaSuccess) {
++        switch (attributes->type) {
++            case 0 /* hipMemoryTypeHost */:
++                attributes->type = (hipMemoryType)1; /* cudaMemoryTypeHost */
++                return status;
++            case 1 /* hipMemoryTypeDevice */:
++                attributes->type = (hipMemoryType)2; /* cudaMemoryTypeDevice */
++                return status;
++            default:
++                /* we don't care the rest of possibilities */
++                return status;
++        }
++#else
+     if (status == cudaSuccess) {
+         switch (attributes->memoryType) {
+             case 0 /* hipMemoryTypeHost */:
+@@ -281,6 +295,7 @@ cudaError_t cudaPointerGetAttributes(cudaPointerAttributes *attributes,
+                 /* we don't care the rest of possibilities */
+                 return status;
+         }
++#endif
+     } else {
+         return status;
+     }

@@ -7,3 +7,5 @@
 !*.sql
 !*.cxx
 !eig.txt
+!eig.py
+!patches/*.patch

@@ -1,0 +1,13 @@
+diff --git a/gpaw/gpu/__init__.py b/gpaw/gpu/__init__.py
+index 5498403d6..8801f33c5 100644
+--- a/gpaw/gpu/__init__.py
++++ b/gpaw/gpu/__init__.py
+@@ -20,6 +20,8 @@ else:
+         import cupy
+         import cupyx
+         from cupy.cuda import runtime
++        from cupy import cublas
++
+         is_hip = runtime.is_hip
+         cupy_is_fake = False
+     except ImportError:
