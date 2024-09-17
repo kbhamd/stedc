@@ -14,8 +14,10 @@ sort: sort.cxx
 	hipcc -D__HIP_PLATFORM_AMD__ -o sort sort.cxx
 
 prof: eig
-	rocprof --stats --basenames on -i eig.txt ./eig $(N)
-	sqlite3 < eig.sql
+	#rocprof --stats --basenames on -i eig.txt ./eig $(N)
+	#sqlite3 < eig.sql
+	rocprofv2 --basenames -o eig -i eigv2.txt ./eig $(N)
+	sqlite3 < eigv2.sql
 
 nvprof: eig
 	nsys profile -t cuda -o eig --stats=true --force-overwrite=true ./eig $(N) 1>/dev/null
