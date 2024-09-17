@@ -1,0 +1,137 @@
+diff --git a/cupy/cuda/cupy_cufft.h b/cupy/cuda/cupy_cufft.h
+index f52fe3675..d005769cd 100644
+--- a/cupy/cuda/cupy_cufft.h
++++ b/cupy/cuda/cupy_cufft.h
+@@ -12,7 +12,7 @@
+ #include <cufftXt.h>
+ 
+ #elif defined(CUPY_USE_HIP)
+-#include <hipfft.h>
++#include <hipfft/hipfft.h>
+ 
+ extern "C" {
+ 
+diff --git a/cupy_backends/hip/cupy_hip_common.h b/cupy_backends/hip/cupy_hip_common.h
+index 7f94d1ff6..f79da383b 100644
+--- a/cupy_backends/hip/cupy_hip_common.h
++++ b/cupy_backends/hip/cupy_hip_common.h
+@@ -2,8 +2,8 @@
+ #define INCLUDE_GUARD_HIP_CUPY_COMMON_H
+ 
+ #include <hip/hip_runtime_api.h>
+-#include <hipblas.h>
+-#include <rocsolver.h>
++#include <hipblas/hipblas.h>
++#include <rocsolver/rocsolver.h>
+ 
+ #define CUDA_VERSION 0
+ 
+diff --git a/cupy_backends/hip/cupy_hipblas.h b/cupy_backends/hip/cupy_hipblas.h
+index 627bc8681..fe166d7e3 100644
+--- a/cupy_backends/hip/cupy_hipblas.h
++++ b/cupy_backends/hip/cupy_hipblas.h
+@@ -2,7 +2,7 @@
+ #define INCLUDE_GUARD_HIP_CUPY_HIPBLAS_H
+ 
+ #include "cupy_hip_common.h"
+-#include <hipblas.h>
++#include <hipblas/hipblas.h>
+ #include <hip/hip_version.h>  // for HIP_VERSION
+ #include <stdexcept>  // for gcc 10
+ 
+diff --git a/cupy_backends/hip/cupy_hipsparse.h b/cupy_backends/hip/cupy_hipsparse.h
+index 5b2e9388e..57859c5c4 100644
+--- a/cupy_backends/hip/cupy_hipsparse.h
++++ b/cupy_backends/hip/cupy_hipsparse.h
+@@ -2,7 +2,7 @@
+ 
+ #ifndef INCLUDE_GUARD_HIP_CUPY_HIPSPARSE_H
+ #define INCLUDE_GUARD_HIP_CUPY_HIPSPARSE_H
+-#include <hipsparse.h>
++#include <hipsparse/hipsparse.h>
+ #include <hip/hip_version.h>    // for HIP_VERSION
+ #include <hip/library_types.h>  // for hipDataType
+ #include <stdexcept>  // for gcc 10.0
+diff --git a/cupy_backends/hip/cupy_rccl.h b/cupy_backends/hip/cupy_rccl.h
+index 94dde3505..06af0461d 100644
+--- a/cupy_backends/hip/cupy_rccl.h
++++ b/cupy_backends/hip/cupy_rccl.h
+@@ -1,7 +1,7 @@
+ #ifndef INCLUDE_GUARD_HIP_CUPY_RCCL_H
+ #define INCLUDE_GUARD_HIP_CUPY_RCCL_H
+ 
+-#include <rccl.h>
++#include <rccl/rccl.h>
+ typedef hipStream_t cudaStream_t;
+ 
+ #endif
+diff --git a/cupy_backends/hip/cupy_roctx.h b/cupy_backends/hip/cupy_roctx.h
+index 6a6e63a74..98ed633c1 100644
+--- a/cupy_backends/hip/cupy_roctx.h
++++ b/cupy_backends/hip/cupy_roctx.h
+@@ -2,7 +2,7 @@
+ #define INCLUDE_GUARD_HIP_CUPY_ROCTX_H
+ 
+ #ifndef CUPY_NO_NVTX
+-#include <roctx.h>
++#include <roctracer/roctx.h>
+ #endif // #ifndef CUPY_NO_NVTX
+ 
+ // this is to ensure we use non-"Ex" APIs like roctxMarkA etc
+diff --git a/install/cupy_builder/_features.py b/install/cupy_builder/_features.py
+index ae819da94..a560fcacf 100644
+--- a/install/cupy_builder/_features.py
++++ b/install/cupy_builder/_features.py
+@@ -168,12 +168,12 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
+         'include': [
+             'hip/hip_runtime_api.h',
+             'hip/hiprtc.h',
+-            'hipblas.h',
++            'hipblas/hipblas.h',
+             'hiprand/hiprand.h',
+-            'hipsparse.h',
+-            'hipfft.h',
+-            'roctx.h',
+-            'rocsolver.h',
++            'hipsparse/hipsparse.h',
++            'hipfft/hipfft.h',
++            'roctracer/roctx.h',
++            'rocsolver/rocsolver.h',
+         ],
+         'libraries': [
+             'amdhip64',  # was hiprtc and hip_hcc before ROCm 3.8.0
+@@ -364,7 +364,7 @@ def get_features(ctx: Context) -> Dict[str, Feature]:
+             'cupy_backends.cuda.libs.nccl',
+         ],
+         'include': [
+-            'rccl.h',
++            'rccl/rccl.h',
+         ],
+         'libraries': [
+             'rccl',
+diff --git a/install/cupy_builder/install_build.py b/install/cupy_builder/install_build.py
+index 757fa67c7..94d379578 100644
+--- a/install/cupy_builder/install_build.py
++++ b/install/cupy_builder/install_build.py
+@@ -453,7 +453,7 @@ def check_nccl_version(compiler, settings):
+                             #ifndef CUPY_USE_HIP
+                             #include <nccl.h>
+                             #else
+-                            #include <rccl.h>
++                            #include <rccl/rccl.h>
+                             #endif
+                             #include <stdio.h>
+                             #ifdef NCCL_MAJOR
+diff --git a/cupy/random/cupy_distributions.cuh b/cupy/random/cupy_distributions.cuh
+index f010bff6c..cb03c9e4b 100644
+--- a/cupy/random/cupy_distributions.cuh
++++ b/cupy/random/cupy_distributions.cuh
+@@ -35,7 +35,7 @@ struct rk_binomial_state {
+ // gcc will be used, but the hiprand_kernel can only be compiled with llvm
+ // so we need to explicitly declare stubs for the functions
+ #if HIP_VERSION > 400
+-#include <hiprand_kernel.h>
++#include <hiprand/hiprand_kernel.h>
+ #else
+ #include <hiprand.h>
+ typedef struct {} hiprandState
